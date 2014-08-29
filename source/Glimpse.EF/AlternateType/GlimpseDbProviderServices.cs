@@ -16,6 +16,7 @@ using System.Reflection;
     using System.Data.Spatial;
 #endif
 using Glimpse.Ado.AlternateType;
+using Glimpse.Core.Framework;
 
 namespace Glimpse.EF.AlternateType
 {
@@ -24,9 +25,10 @@ namespace Glimpse.EF.AlternateType
 #if (EF5 && NET45) || EF6
         private readonly MethodInfo setParameterValueMethod;
 #endif
-        public GlimpseDbProviderServices(DbProviderServices innerProviderServices)
+        public GlimpseDbProviderServices(DbProviderServices innerProviderServices, Func<IFrameworkProvider> getFrameworkProvider)
         {
             InnerProviderServices = innerProviderServices;
+            GetFrameworkProvider = getFrameworkProvider;
 
 #if (EF5 && NET45) || EF6
             setParameterValueMethod = InnerProviderServices.GetType().GetMethod("SetParameterValue", BindingFlags.NonPublic | BindingFlags.Public | BindingFlags.Instance);
@@ -35,19 +37,29 @@ namespace Glimpse.EF.AlternateType
 
         private DbProviderServices InnerProviderServices { get; set; }
 
+        private Func<IFrameworkProvider> GetFrameworkProvider { get; set; }
+
         public override DbCommandDefinition CreateCommandDefinition(DbCommand prototype)
         {
-            return new GlimpseDbCommandDefinition(InnerProviderServices.CreateCommandDefinition(prototype));
+            var commandDef = InnerProviderServices.CreateCommandDefinition(prototype);
+            return GetFrameworkProvider().CanPerformGlimpseWork
+                ? new GlimpseDbCommandDefinition(commandDef)
+                : commandDef;
         }
 
         protected override DbCommandDefinition CreateDbCommandDefinition(DbProviderManifest providerManifest, DbCommandTree commandTree)
         {
-            return new GlimpseDbCommandDefinition(InnerProviderServices.CreateCommandDefinition(providerManifest, commandTree));
+            var commandDef = InnerProviderServices.CreateCommandDefinition(providerManifest, commandTree);
+            return GetFrameworkProvider().CanPerformGlimpseWork
+                ? new GlimpseDbCommandDefinition(commandDef)
+                : commandDef;
         }
 
         protected override void DbCreateDatabase(DbConnection connection, int? commandTimeout, StoreItemCollection storeItemCollection)
         {
-            InnerProviderServices.CreateDatabase(((GlimpseDbConnection)connection).InnerConnection, commandTimeout, storeItemCollection);
+            var glimpseConnection = connection as GlimpseDbConnection;
+            DbConnection rawConnection = glimpseConnection == null ? connection : glimpseConnection.InnerConnection;
+            InnerProviderServices.CreateDatabase(rawConnection, commandTimeout, storeItemCollection);
         }
 
         protected override string DbCreateDatabaseScript(string providerManifestToken, StoreItemCollection storeItemCollection)
@@ -57,12 +69,16 @@ namespace Glimpse.EF.AlternateType
 
         protected override bool DbDatabaseExists(DbConnection connection, int? commandTimeout, StoreItemCollection storeItemCollection)
         {
-            return InnerProviderServices.DatabaseExists(((GlimpseDbConnection)connection).InnerConnection, commandTimeout, storeItemCollection);
+            var glimpseConnection = connection as GlimpseDbConnection;
+            DbConnection rawConnection = glimpseConnection == null ? connection : glimpseConnection.InnerConnection;
+            return InnerProviderServices.DatabaseExists(rawConnection, commandTimeout, storeItemCollection);
         }
 
         protected override void DbDeleteDatabase(DbConnection connection, int? commandTimeout, StoreItemCollection storeItemCollection)
         {
-            InnerProviderServices.DeleteDatabase(((GlimpseDbConnection)connection).InnerConnection, commandTimeout, storeItemCollection);
+            var glimpseConnection = connection as GlimpseDbConnection;
+            DbConnection rawConnection = glimpseConnection == null ? connection : glimpseConnection.InnerConnection;
+            InnerProviderServices.DeleteDatabase(rawConnection, commandTimeout, storeItemCollection);
         }
 
         protected override DbProviderManifest GetDbProviderManifest(string manifestToken)
@@ -78,15 +94,11 @@ namespace Glimpse.EF.AlternateType
         }
 
 #if (EF5 && NET45) || EF6Plus
-        protected override DbSpatialDataReader GetDbSpatialDataReader(System.Data.Common.DbDataReader fromReader, string manifestToken)
+        protected override DbSpatialDataReader GetDbSpatialDataReader(DbDataReader reader, string manifestToken)
         {
-            var typedReader = fromReader as GlimpseDbDataReader;
-            if (typedReader != null)
-            {
-                fromReader = typedReader.InnerDataReader;
-            }
-
-            return InnerProviderServices.GetSpatialDataReader(fromReader, manifestToken);
+            var glimpseReader = reader as GlimpseDbDataReader;
+            DbDataReader rawReader = glimpseReader == null ? reader : glimpseReader.InnerDataReader;
+            return InnerProviderServices.GetSpatialDataReader(rawReader, manifestToken);
         }
 #endif
 

@@ -19,7 +19,7 @@ namespace Glimpse.Core.Framework
         private ICollection<IClientScript> clientScripts;
         private IResource defaultResource;
         private string endpointBaseUri;
-        private IFrameworkProvider frameworkProvider;
+        private static IFrameworkProvider frameworkProvider;
         private IHtmlEncoder htmlEncoder;
         private IPersistenceStore persistenceStore;
         private ICollection<IInspector> inspectors;
@@ -57,7 +57,7 @@ namespace Glimpse.Core.Framework
         /// <param name="runtimePolicyStrategy">The runtime policy strategy.</param>
         /// <exception cref="System.ArgumentNullException">An exception is thrown if any parameter is <c>null</c>.</exception>
         public GlimpseConfiguration(
-            IFrameworkProvider frameworkProvider, 
+            IFrameworkProvider frameworkProvider,
             ResourceEndpointConfiguration endpointConfiguration,
             ICollection<IClientScript> clientScripts,
             ILogger logger,
@@ -616,8 +616,8 @@ namespace Glimpse.Core.Framework
         /// The configured <see cref="IExecutionTimer"/> strategy.
         /// </value>
         /// <exception cref="System.ArgumentNullException">An exception is thrown if the value is set to <c>null</c>.</exception>
-        public Func<IExecutionTimer> TimerStrategy 
-        { 
+        public Func<IExecutionTimer> TimerStrategy
+        {
             get
             {
                 return timerStrategy;
@@ -676,6 +676,12 @@ namespace Glimpse.Core.Framework
             }
         }
 
+        [Obsolete("SUPER HACK: To support being able to query the framework provider whether it can perform glimpse work.")]
+        public static Func<IFrameworkProvider> GetFrameworkProviderFunc()
+        {
+            return () => frameworkProvider ?? NullFrameworkProvider.Instance;
+        }
+
         [Obsolete("HACK: To support TraceListener with TraceSource via web.config")]
         public static ILogger GetLogger()
         {
@@ -696,7 +702,7 @@ namespace Glimpse.Core.Framework
                     // Avoid exception being thrown from threads without access to request store
                     return null;
                 }
-            }; 
+            };
         }
 
         [Obsolete("HACK: To support TraceListener with TraceSource via web.config")]

@@ -2,35 +2,42 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.Common;
-using System.Linq; 
+using System.Linq;
 using Glimpse.Ado.AlternateType;
 using Glimpse.Core.Extensibility;
+using Glimpse.Core.Framework;
 using Glimpse.Core.Framework.Support;
 
 namespace Glimpse.Ado.Inspector.Core
 {
     public class DbProviderFactoriesExecutionTask : IExecutionTask
     {
-        public readonly static Dictionary<string, string> Factories = new Dictionary<string, string>(); 
+        public readonly static Dictionary<string, string> Factories = new Dictionary<string, string>();
 
-        public DbProviderFactoriesExecutionTask(ILogger logger)
+        public DbProviderFactoriesExecutionTask(ILogger logger, Func<IFrameworkProvider> getFrameworkProvider)
         {
             Logger = logger;
+            GetFrameworkProvider = getFrameworkProvider;
         }
 
         private ILogger Logger { get; set; }
 
+        private Func<IFrameworkProvider> GetFrameworkProvider { get; set; }
+
         public void Execute()
-        { 
+        {
             Logger.Info("AdoInspector: Starting to replace DbProviderFactory");
+
+            // Set the framework provider on the base class.
+            GlimpseDbProviderFactory.GetFrameworkProvider = GetFrameworkProvider;
 
             // This forces the creation 
             try
             {
-                DbProviderFactories.GetFactory("Anything"); 
+                DbProviderFactories.GetFactory("Anything");
             }
             catch (ArgumentException)
-            { 
+            {
             }
 
             // Find the registered providers

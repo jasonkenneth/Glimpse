@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic; 
+﻿using System;
+using System.Collections.Generic;
 using Glimpse.Core.Extensibility;
 
 namespace Glimpse.Core.Framework.Support
@@ -19,6 +20,14 @@ namespace Glimpse.Core.Framework.Support
             get
             {
                 return this.logger ?? (this.logger = GlimpseConfiguration.GetLogger() ?? new NullLogger());
+            }
+        }
+
+        protected Func<IFrameworkProvider> GetFrameworkProvider
+        {
+            get
+            {
+                return GlimpseConfiguration.GetFrameworkProviderFunc();
             }
         }
 

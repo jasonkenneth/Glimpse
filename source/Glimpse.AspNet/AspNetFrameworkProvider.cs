@@ -43,6 +43,12 @@ namespace Glimpse.AspNet
             get { return new RequestMetadata(Context); }
         }
 
+        /// <inheritdoc />
+        public bool CanPerformGlimpseWork
+        {
+            get { return Context != null; }
+        }
+
         internal HttpContextBase Context
         {
             get { return context ?? TryGetOrCaptureLogicalContext(); }

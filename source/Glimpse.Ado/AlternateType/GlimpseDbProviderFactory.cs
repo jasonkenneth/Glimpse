@@ -1,27 +1,30 @@
 ﻿using System;
 using System.Data.Common;
-using System.Reflection; 
+using System.Reflection;
+using Glimpse.Core.Framework;
 
 namespace Glimpse.Ado.AlternateType
 {
     public abstract class GlimpseDbProviderFactory : DbProviderFactory
     {
+        public static Func<IFrameworkProvider> GetFrameworkProvider { protected get; set; }
     }
 
     public class GlimpseDbProviderFactory<TProviderFactory> : GlimpseDbProviderFactory, IServiceProvider
         where TProviderFactory : DbProviderFactory
-    {   
+    {
         public static readonly GlimpseDbProviderFactory<TProviderFactory> Instance = new GlimpseDbProviderFactory<TProviderFactory>();
-        
+
         public GlimpseDbProviderFactory()
-        {            
+        {
+
             var field = typeof(TProviderFactory).GetField("Instance", BindingFlags.Public | BindingFlags.Static);
             if (field == null)
             {
                 throw new NotSupportedException("Provider doesn't have Instance property.");
             }
 
-            InnerFactory = (TProviderFactory)field.GetValue(null);           
+            InnerFactory = (TProviderFactory)field.GetValue(null);
         }
 
         public override bool CanCreateDataSourceEnumerator
@@ -32,8 +35,11 @@ namespace Glimpse.Ado.AlternateType
         private TProviderFactory InnerFactory { get; set; }
 
         public override DbCommand CreateCommand()
-        { 
-            return new GlimpseDbCommand(InnerFactory.CreateCommand());
+        {
+            var cmd = InnerFactory.CreateCommand();
+            return GetFrameworkProvider().CanPerformGlimpseWork
+                       ? new GlimpseDbCommand(cmd)
+                       : cmd;
         }
 
         public override DbCommandBuilder CreateCommandBuilder()
@@ -42,8 +48,11 @@ namespace Glimpse.Ado.AlternateType
         }
 
         public override DbConnection CreateConnection()
-        { 
-            return new GlimpseDbConnection(InnerFactory.CreateConnection(), this);
+        {
+            var connection = InnerFactory.CreateConnection();
+            return GetFrameworkProvider().CanPerformGlimpseWork
+                       ? new GlimpseDbConnection(InnerFactory.CreateConnection(), this)
+                       : connection;
         }
 
         public override DbConnectionStringBuilder CreateConnectionStringBuilder()
@@ -53,7 +62,8 @@ namespace Glimpse.Ado.AlternateType
 
         public override DbDataAdapter CreateDataAdapter()
         {
-            return new GlimpseDbDataAdapter(InnerFactory.CreateDataAdapter()); 
+            var adapter = InnerFactory.CreateDataAdapter();
+            return GetFrameworkProvider().CanPerformGlimpseWork ? new GlimpseDbDataAdapter(adapter) : adapter;
         }
 
         public override DbDataSourceEnumerator CreateDataSourceEnumerator()
@@ -65,10 +75,10 @@ namespace Glimpse.Ado.AlternateType
         {
             return InnerFactory.CreateParameter();
         }
-         
+
         public object GetService(Type serviceType)
         {
-            if (serviceType == GetType())
+            if (serviceType == typeof(GlimpseDbProviderFactory<TProviderFactory>))
             {
                 return InnerFactory;
             }
@@ -97,9 +107,9 @@ namespace Glimpse.Ado.AlternateType
                 if (type != null)
                 {
                     return Activator.CreateInstance(type, service);
-                } 
-                
-                throw new NotSupportedException(Resources.GlimpseEFNotPresent);  
+                }
+
+                throw new NotSupportedException(Resources.GlimpseEFNotPresent);
             }
 
             return service;

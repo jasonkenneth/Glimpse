@@ -112,5 +112,62 @@ namespace Glimpse.Core.Framework
         /// <seealso cref="IResourceResult"/>
         /// </remarks>
         void WriteHttpResponse(string content);
+
+        /// <summary>
+        /// Gets a value indicating whether this instance can perform glimpse work.
+        /// </summary>
+        /// <remarks>
+        /// This is used by extentions to know whether the glimpse runtime can actually perform the work
+        /// requested of it. For example, if a background task is launched within asp.net...  // todo(Jason Hadlock): Finish comments
+        /// </remarks>
+        /// <value><c>true</c> if this instance can perform glimpse work; otherwise, <c>false</c>.</value>
+        bool CanPerformGlimpseWork { get; }
+    }
+
+    public class NullFrameworkProvider : IFrameworkProvider
+    {
+        public IDataStore HttpRequestStore { get; private set; }
+
+        public IDataStore HttpServerStore { get; private set; }
+
+        public object RuntimeContext { get; private set; }
+
+        public IRequestMetadata RequestMetadata { get; private set; }
+
+        public void SetHttpResponseHeader(string name, string value)
+        {
+        }
+
+        public void SetHttpResponseStatusCode(int statusCode)
+        {
+        }
+
+        public void SetCookie(string name, string value)
+        {
+        }
+
+        public void InjectHttpResponseBody(string htmlSnippet)
+        {
+        }
+
+        public void WriteHttpResponse(byte[] content)
+        {
+        }
+
+        public void WriteHttpResponse(string content)
+        {
+        }
+
+        public bool CanPerformGlimpseWork
+        {
+            get { return false; }
+        }
+
+        private readonly static IFrameworkProvider s_instance = new NullFrameworkProvider();
+
+        public static IFrameworkProvider Instance
+        {
+            get { return s_instance; }
+        }
     }
 }
